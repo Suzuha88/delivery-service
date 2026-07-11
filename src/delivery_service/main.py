@@ -1,30 +1,35 @@
-from typing import Annotated, Any, Sequence
+from contextlib import asynccontextmanager
+from typing import Annotated, Any
 
 import uvicorn
-from core.db import get_session
 from fastapi import Depends, FastAPI
-from models.models import Test
-from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-app = FastAPI()
+from config import settings
+from core.db import get_session, initialize_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    session = await anext(get_session())
+    await initialize_db(session)
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 
 if __name__ == "__main__":
     uvicorn.run("main:app", reload=True)
 
 
-class TestSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    text: str
+@app.post("/register")
+async def register(session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, Any]:
+
+    return {"response": 0}
 
 
-@app.get("/", response_model=list[TestSchema])
+@app.get("/")
 async def index(
         session: Annotated[AsyncSession, Depends(get_session)]
-) -> Sequence[Test]:
-
-    res = await session.execute(select(Test))
-
-    return res.scalars().all()
+):
+    return settings.DATABASE_URL_WITHOUT_CLIENT

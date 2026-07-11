@@ -1,7 +1,10 @@
-from typing import AsyncGenerator
+from typing import Annotated, AsyncGenerator
+
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from config import settings
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from models.models import Category
 
 URL = settings.DATABASE_URL
 
@@ -16,3 +19,7 @@ AsyncSessionMaker = async_sessionmaker(
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionMaker() as session:
         yield session
+
+
+async def initialize_db(session: AsyncSession) -> None:
+    await Category.ensure_populated(session)
