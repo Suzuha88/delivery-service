@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator:
     await initialize_db()
     connection, channel, queue = await initialize_rabbitmq()
 
