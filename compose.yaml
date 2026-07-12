@@ -12,6 +12,10 @@ services:
       
     volumes:
       - postgres_data:/var/lib/postgresql/18/data
+  rabbit_mq:
+    image: rabbitmq@sha256:0753b75ce99094c385483d89449d532a0544fb85e4942a478b21cc497ab66d33
+    ports:
+      - "${RABBIT_PORT}:15672"
 
 
 volumes:

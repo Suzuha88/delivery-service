@@ -1,16 +1,9 @@
 
-from enum import Enum
-
-from sqlalchemy import CheckConstraint, ForeignKey, select
-from sqlalchemy import Enum as SAEnum
+from sqlalchemy import CheckConstraint, Enum, ForeignKey, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-
-class CategoryEnum(Enum):
-    CLOTHES = "clothes"
-    ELECTRONICS = "electronics"
-    MISC = "miscellaneous"
+from shared import CategoryEnum
 
 
 class Base(DeclarativeBase):
@@ -21,7 +14,7 @@ class Category(Base):
     __tablename__ = "categories"
 
     uid: Mapped[int] = mapped_column(primary_key=True)
-    category_name: Mapped[CategoryEnum] = mapped_column(SAEnum(CategoryEnum))
+    category_name: Mapped[CategoryEnum] = mapped_column(Enum(CategoryEnum))
 
     @classmethod
     async def ensure_populated(cls, session: AsyncSession) -> None:

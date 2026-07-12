@@ -5,8 +5,8 @@ from pathlib import Path
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from src.delivery_service.config import settings
-from src.delivery_service.models.models import Base
+from src.worker.config import settings
+from src.worker.models.models import Base
 
 src_path = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(src_path))

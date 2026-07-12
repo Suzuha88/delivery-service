@@ -1,10 +1,9 @@
 from typing import Annotated, AsyncGenerator
 
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
 from config import settings
+from fastapi import Depends
 from models.models import Category
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 URL = settings.DATABASE_URL
 
