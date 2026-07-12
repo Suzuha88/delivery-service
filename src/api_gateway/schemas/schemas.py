@@ -2,7 +2,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
 
-from core.enums import CategoryEnum
+from shared import CategoryEnum
 
 
 class PackageSchema(BaseModel):

@@ -3,9 +3,9 @@ from logging.config import fileConfig
 from pathlib import Path
 
 from alembic import context
+from shared.config import settings
 from sqlalchemy import engine_from_config, pool
 
-from src.worker.config import settings
 from src.worker.models.models import Base
 
 src_path = Path(__file__).parent.parent.parent

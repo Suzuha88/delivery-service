@@ -1,6 +1,6 @@
 services:
   sql_db:
-    image: postgres:latest
+    image: postgres@sha256:4aabea78cf39b90e834caf3af7d602a18565f6fe2508705c8d01aa63245c2e20
     container_name: postgres_db
     restart: unless-stopped
     ports:
@@ -15,7 +15,11 @@ services:
   rabbit_mq:
     image: rabbitmq@sha256:0753b75ce99094c385483d89449d532a0544fb85e4942a478b21cc497ab66d33
     ports:
-      - "${RABBIT_PORT}:15672"
+      - "${RABBIT_PORT}:15672" # Do not change order of ports, it is important
+      - "${AMQP_PORT}:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
 
 
 volumes:

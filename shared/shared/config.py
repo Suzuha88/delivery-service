@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", extra="allow")
 
     DB_CLIENT: str = "+asyncpg"
     DB_PASSWORD: str
@@ -11,6 +11,15 @@ class Settings(BaseSettings):
     DB_HOST: str
     DB_PORT: int
 
+    RABBIT_USER: str
+    RABBIT_PASSWORD: str
+    RABBIT_HOST: str
+    RABBIT_PORT: int
+    AMQP_PORT: int
+
+    API_GATEWAY_PORT: int
+    WORKER_PORT: int
+
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql{self.DB_CLIENT}://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
@@ -18,6 +27,10 @@ class Settings(BaseSettings):
     @property
     def DATABASE_URL_WITHOUT_CLIENT(self) -> str:
         return self.DATABASE_URL.replace(self.DB_CLIENT, "")
+
+    @property
+    def RABBIT_URL(self) -> str:
+        return f"amqp://{self.RABBIT_USER}:{self.RABBIT_PASSWORD}@{self.RABBIT_HOST}:{self.AMQP_PORT}/"
 
 
 settings = Settings()
