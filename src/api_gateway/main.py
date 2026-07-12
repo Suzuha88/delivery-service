@@ -4,17 +4,21 @@ from secrets import token_hex
 from typing import Annotated, Any
 
 import uvicorn
-from aio_pika import Connection, Message, connect
-from fastapi import Cookie, FastAPI, Request, Response
+from aio_pika import Message
+from fastapi import FastAPI, Request, Response
 from schemas.schemas import PackageSchema
 from shared.config import settings
+from shared.db import initialize_db
+from shared.rabbit import initialize_rabbitmq
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", reload=True, port=settings.API_GATEWAY_PORT)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    connection = await connect(settings.RABBIT_URL)
-    channel = await connection.channel()
-    queue = await channel.declare_queue("hello", durable=True)
+    await initialize_db()
+    connection, channel, queue = await initialize_rabbitmq()
 
     app.state.connection = connection
     app.state.channel = channel
@@ -45,21 +49,6 @@ async def add_session_id(request: Request, call_next) -> None | Response:
 
     response = await call_next(request)
     return response
-
-
-if __name__ == "__main__":
-    uvicorn.run("main:app", reload=True, port=settings.API_GATEWAY_PORT)
-
-
-@app.get("/")
-async def index(
-) -> Any:
-    channel = app.state.channel
-
-    await channel.default_exchange.publish(
-        Message(b"Hello from producer!"),
-        routing_key=app.state.queue.name,
-    )
 
 
 @app.post("/register")

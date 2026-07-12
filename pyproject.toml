@@ -10,7 +10,6 @@ dependencies = [
     "alembic>=1.18.5",
     "asyncpg>=0.31.0",
     "fastapi[standard]>=0.139.0",
-    "itsdangerous>=2.2.0",
     "psycopg2>=2.9.12",
     "pytest>=9.1.1",
     "shared",
