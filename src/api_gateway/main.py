@@ -1,16 +1,20 @@
 from contextlib import asynccontextmanager
 from json import dumps as json_dumps
 from secrets import token_hex
-from typing import AsyncGenerator
+from typing import Annotated, AsyncGenerator
 
 import uvicorn
 from aio_pika import Message
-from fastapi import FastAPI, Request, Response, status
+from fastapi import Depends, FastAPI, Request, Response, status
+from fastapi.responses import JSONResponse
 from schemas.schemas import PackageSchema
 from shared.config import settings
-from shared.db import initialize_db
+from shared.db import get_session, initialize_db
+from shared.models import Package
 from shared.rabbit import initialize_rabbitmq
+from sqlalchemy import select
 from starlette.middleware.base import RequestResponseEndpoint
+from utils import get_session_id
 
 if __name__ == "__main__":
     uvicorn.run("main:app", reload=True, port=settings.API_GATEWAY_PORT)
@@ -62,8 +66,7 @@ async def register(
 
 ) -> Response:
 
-    session_id = request.cookies.get(
-        "session_id") or request.state.session_id
+    session_id = get_session_id(request)
 
     channel = app.state.channel
     dict_body = package.model_dump()
@@ -83,3 +86,17 @@ async def register(
         return Response(
             content={"error": f"Couldn't send package for registration: {e}"},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@app.get("/packages")
+async def get_all_packages(
+        request: Request,
+        session: Annotated[AsyncGenerator, Depends(get_session)]
+) -> Response:
+
+    session_id = get_session_id(request)
+    query = select(Package).where(Package.session_id == session_id)
+
+    res = (await session.execute(query)).scalars().all()
+
+    return res
