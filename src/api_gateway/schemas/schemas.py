@@ -8,10 +8,10 @@ from shared import CategoryEnum
 class PackageSchema(BaseModel):
     name: str
     weight: Annotated[float, Field(gt=0)]
-    category: CategoryEnum
+    category_name: CategoryEnum
     dollar_price: Annotated[float, Field(ge=0)]
 
-    @field_validator("category", mode="before")
+    @field_validator("category_name", mode="before")
     @classmethod
     def to_lowercase(cls, v: str) -> str:
         if isinstance(v, str):

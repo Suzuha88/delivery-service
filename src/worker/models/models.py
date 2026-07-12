@@ -37,6 +37,7 @@ class Package(Base):
     __tablename__ = "packages"
 
     uid: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[str] = mapped_column(index=True)
     name: Mapped[str]
     weight: Mapped[float] = mapped_column(
         CheckConstraint("weight > 0", name="ck_weight_positive"))
