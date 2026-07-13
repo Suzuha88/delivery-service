@@ -2,11 +2,11 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from alembic import context
 from shared.config import settings
+from shared.models import Base
 from sqlalchemy import engine_from_config, pool
 
-from src.worker.models.models import Base
+from alembic import context
 
 src_path = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(src_path))

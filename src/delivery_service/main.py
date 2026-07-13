@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from json import dumps as json_dumps
 from secrets import token_hex
-from typing import Annotated, AsyncGenerator
+from typing import Annotated, Any, AsyncGenerator
 
 import uvicorn
 from aio_pika import Message
@@ -10,9 +10,11 @@ from fastapi.responses import JSONResponse
 from schemas.schemas import PackageSchema
 from shared.config import settings
 from shared.db import get_session, initialize_db
-from shared.models import Package
+from shared.models import Category, Package
 from shared.rabbit import initialize_rabbitmq
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from starlette.middleware.base import RequestResponseEndpoint
 from utils import get_session_id
 
@@ -64,7 +66,7 @@ async def register(
         package: PackageSchema,
         request: Request,
 
-) -> Response:
+) -> JSONResponse:
 
     session_id = get_session_id(request)
 
@@ -80,23 +82,70 @@ async def register(
             Message(byte_body),
             routing_key=app.state.queue.name
         )
-        return Response(content={"message": "Package sent for registration"},
-                        status_code=status.HTTP_200_OK)
+        return JSONResponse(content={"message": "Package sent for registration"},
+                            status_code=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
+        return JSONResponse(
             content={"error": f"Couldn't send package for registration: {e}"},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@app.get("/packages/{package_id}")
+async def get_package(
+    request: Request,
+    db_session: Annotated[AsyncSession, Depends(get_session)],
+    package_id: int
+) -> JSONResponse:
+
+    session_id = get_session_id(request)
+    query = select(
+        Package.uid,
+        Package.name,
+        Package.weight,
+        Package.dollar_price,
+        Package.ruble_price,
+        Category.category_name.label("category")
+    ).join(Package.category).where(
+        Package.session_id == session_id,
+        Package.uid == package_id)
+
+    res = (await db_session.execute(query)).mappings().one_or_none()
+
+    if res:
+        return res
+
+    return JSONResponse(
+        content={"message": "No packages with this id"},
+        status_code=status.HTTP_404_NOT_FOUND)
 
 
 @app.get("/packages")
 async def get_all_packages(
         request: Request,
-        session: Annotated[AsyncGenerator, Depends(get_session)]
-) -> Response:
+        db_session: Annotated[AsyncSession, Depends(get_session)]
+) -> list[dict]:
 
     session_id = get_session_id(request)
-    query = select(Package).where(Package.session_id == session_id)
+    query = select(
+        Package.uid,
+        Package.name,
+        Package.weight,
+        Package.dollar_price,
+        Package.ruble_price,
+        Category.category_name.label("category")
+    ).join(Package.category).where(Package.session_id == session_id)
 
-    res = (await session.execute(query)).scalars().all()
+    res = (await db_session.execute(query)).mappings().all()
+
+    return res
+
+
+@app.get("/categories")
+async def get_all_categories(
+        db_session: Annotated[AsyncSession, Depends(get_session)]
+) -> Response:
+    query = select(Category)
+
+    res = (await db_session.execute(query)).scalars().all()
 
     return res

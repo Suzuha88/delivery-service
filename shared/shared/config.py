@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     RABBIT_PORT: int
     AMQP_PORT: int
 
+    REDIS_PORT: int
+
     API_GATEWAY_PORT: int
     WORKER_PORT: int
 

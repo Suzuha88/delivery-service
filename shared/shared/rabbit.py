@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from .config import settings
 from .db import AsyncSessionMaker
 from .models import Category, Package
+from .rd_cache import get_rates
 
 
 async def initialize_rabbitmq(
@@ -35,15 +36,12 @@ async def process_registration_message(
         category_name = body_dict["category_name"]
         del body_dict["category_name"]
 
-        async with ClientSession() as http_session, session_maker() as db_session:
-            async with http_session.get(
-                    "https://www.cbr-xml-daily.ru/daily_json.js"
-            ) as resp:
-                resp_dict = json_loads(await resp.text())
-                usd_info_dict = resp_dict["Valute"]["USD"]
-                dollar_price_in_rubles = usd_info_dict["Value"]
-                ruble_price = body_dict["dollar_price"] * \
-                    dollar_price_in_rubles
+        async with session_maker() as db_session:
+            resp_dict = json_loads(await get_rates())
+            usd_info_dict = resp_dict["Valute"]["USD"]
+            dollar_price_in_rubles = usd_info_dict["Value"]
+            ruble_price = body_dict["dollar_price"] * \
+                dollar_price_in_rubles
 
             query = select(Category).where(
                 Category.category_name == category_name)

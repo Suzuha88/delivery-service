@@ -14,12 +14,21 @@ services:
       - postgres_data:/var/lib/postgresql/18/data
   rabbit_mq:
     image: rabbitmq@sha256:0753b75ce99094c385483d89449d532a0544fb85e4942a478b21cc497ab66d33
+    container_name: rabbit_mq
     ports:
       - "${RABBIT_PORT}:15672" # Do not change order of ports, it is important
       - "${AMQP_PORT}:5672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
+  redis:
+    image: redis@sha256:2838d5524559494f6f1cd66e97e76b200d64a633a8614200620755ed395daf32
+    container_name: redis_cache
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT}:6379"
+
+    
 
 
 volumes:
