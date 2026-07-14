@@ -3,7 +3,7 @@ from sqlalchemy import CheckConstraint, Enum, ForeignKey, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from shared import CategoryEnum
+from .enums import CategoryEnum
 
 
 class Base(DeclarativeBase):

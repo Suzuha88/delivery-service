@@ -5,7 +5,7 @@ from json import loads
 from aiohttp import ClientSession
 from redis.asyncio import Redis
 
-from shared import settings
+from ..config import settings
 
 CACHE_KEY = "exchange_rates"
 CACHE_TTL = 86400  # 24 hours

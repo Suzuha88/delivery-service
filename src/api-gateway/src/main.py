@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from json import dumps as json_dumps
 from secrets import token_hex
-from typing import Annotated, Any, AsyncGenerator
+from typing import Annotated, AsyncGenerator
 
 import uvicorn
 from aio_pika import Message
@@ -10,11 +10,10 @@ from fastapi.responses import JSONResponse
 from schemas.schemas import PackageSchema
 from shared.config import settings
 from shared.db import get_session, initialize_db
-from shared.models import Category, Package
+from shared.db.models import Category, Package
 from shared.rabbit import initialize_rabbitmq
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
 from starlette.middleware.base import RequestResponseEndpoint
 from utils import get_session_id
 

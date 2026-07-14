@@ -1,8 +1,7 @@
 from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
-
-from shared import CategoryEnum
+from shared.db.enums import CategoryEnum
 
 
 class PackageSchema(BaseModel):

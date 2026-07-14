@@ -7,18 +7,22 @@ from aio_pika.abc import (
     AbstractIncomingMessage,
     AbstractQueue,
 )
-from aiohttp import ClientSession
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from .config import settings
-from .db import AsyncSessionMaker
-from .models import Category, Package
-from .rd_cache import get_rates
+from ..config import settings
+from ..db.db import AsyncSessionMaker
+from ..db.models import Category, Package
+from ..rd_cache import get_rates
 
 
 async def initialize_rabbitmq(
 ) -> tuple[AbstractConnection, AbstractChannel, AbstractQueue]:
+    """
+        Create connection to Rabbit MQ container
+
+        Returns rabbitmq connection, channel, queue instances as a tuple
+    """
     connection = await connect(settings.RABBIT_URL)
     channel = await connection.channel()
     queue = await channel.declare_queue("hello", durable=True)
@@ -29,6 +33,11 @@ async def initialize_rabbitmq(
 async def process_registration_message(
         message: AbstractIncomingMessage,
         session_maker: async_sessionmaker[AsyncSession] = AsyncSessionMaker) -> None:
+    """
+        Process rabbit mq message:
+        Fetches valute info from redis cache,
+        calculates ruble price and inserts into db
+    """
     async with message.process():
         body_dict = json_loads(message.body)
         print(body_dict)
@@ -37,9 +46,10 @@ async def process_registration_message(
         del body_dict["category_name"]
 
         async with session_maker() as db_session:
+
             resp_dict = json_loads(await get_rates())
-            usd_info_dict = resp_dict["Valute"]["USD"]
-            dollar_price_in_rubles = usd_info_dict["Value"]
+            dollar_price_in_rubles = resp_dict["Valute"]["USD"]["Value"]
+
             ruble_price = body_dict["dollar_price"] * \
                 dollar_price_in_rubles
 
