@@ -7,7 +7,6 @@ import uvicorn
 from aio_pika import Message
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
-from schemas.schemas import PackageSchema
 from shared.config import settings
 from shared.db import get_session, initialize_db
 from shared.db.models import Category, Package
@@ -15,10 +14,13 @@ from shared.rabbit import initialize_rabbitmq
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import RequestResponseEndpoint
+
+from schemas.schemas import PackageSchema
 from utils import get_session_id
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", reload=True, port=settings.API_GATEWAY_PORT)
+    uvicorn.run("main:app",
+                reload=True, port=settings.API_GATEWAY_PORT)
 
 
 @asynccontextmanager

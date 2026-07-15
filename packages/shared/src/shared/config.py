@@ -17,10 +17,11 @@ class Settings(BaseSettings):
     RABBIT_PORT: int
     AMQP_PORT: int
 
+    REDIS_HOST: str
     REDIS_PORT: int
 
     API_GATEWAY_PORT: int
-    WORKER_PORT: int
+    MQ_CONSUMER_PORT: int
 
     @property
     def DATABASE_URL(self) -> str:

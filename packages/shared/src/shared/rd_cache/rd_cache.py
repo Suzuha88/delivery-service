@@ -12,7 +12,8 @@ CACHE_TTL = 86400  # 24 hours
 
 
 async def init_redis() -> Redis:
-    rd_client = Redis(port=settings.REDIS_PORT, decode_responses=True)
+    rd_client = Redis(host=settings.REDIS_HOST,
+                      port=settings.REDIS_PORT, decode_responses=True)
 
     await rd_client.ping()
     return rd_client

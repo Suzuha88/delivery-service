@@ -2,7 +2,10 @@
 name = "delivery-service"
 version = "0.1.0"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+  "api-gateway",
+  "mq-consumer"
+]
 
 [tool.uv.workspace]
 members = [
@@ -10,3 +13,7 @@ members = [
     "src/api-gateway",
     "src/mq-consumer",
 ]
+
+[tool.uv.sources]
+api-gateway = {workspace = true, editable = true}
+mq-consumer = {workspace = true, editable = true}

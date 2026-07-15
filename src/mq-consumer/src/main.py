@@ -3,13 +3,13 @@ from typing import AsyncGenerator
 
 import uvicorn
 from fastapi import FastAPI
+from shared import settings
 from shared.db import initialize_db
 from shared.rabbit import initialize_rabbitmq, process_registration_message
 
-from shared import settings
-
 if __name__ == "__main__":
-    uvicorn.run("main:app", reload=True, port=settings.WORKER_PORT)
+    uvicorn.run("main:app",
+                reload=True, port=settings.MQ_CONSUMER_PORT)
 
 
 @asynccontextmanager
