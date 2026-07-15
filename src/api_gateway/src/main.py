@@ -124,7 +124,7 @@ async def get_package(
 async def get_all_packages(
         request: Request,
         db_session: Annotated[AsyncSession, Depends(get_session)]
-) -> list[dict]:
+) -> JSONResponse:
 
     session_id = get_session_id(request)
     query = select(
@@ -144,7 +144,7 @@ async def get_all_packages(
 @app.get("/categories")
 async def get_all_categories(
         db_session: Annotated[AsyncSession, Depends(get_session)]
-) -> Response:
+) -> JSONResponse:
     query = select(Category)
 
     res = (await db_session.execute(query)).scalars().all()

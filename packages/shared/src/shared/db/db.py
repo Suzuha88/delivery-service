@@ -29,7 +29,6 @@ async def initialize_db() -> None:
 
     script = ScriptDirectory.from_config(alembic_cfg)
     current_rev = script.get_current_head()
-    print(current_rev)
 
     if not current_rev:
         command.revision(

@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: docker/dockerfile
-      target: api-gateway
+      target: api_gateway
     ports:
       - "${API_GATEWAY_PORT}:8000"
     depends_on:
@@ -16,7 +16,7 @@ services:
     build:
       context: .
       dockerfile: docker/dockerfile
-      target: mq-consumer
+      target: mq_consumer
     ports:
       - "${MQ_CONSUMER_PORT}:8000"
     depends_on:

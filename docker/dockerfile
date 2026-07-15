@@ -7,15 +7,15 @@ ENV PYTHONUNBUFFERED=1
 COPY packages/ packages/
 RUN uv pip install --system -e packages/shared
 
-FROM base AS api-gateway
-COPY src/api-gateway src/api-gateway/
-RUN uv pip install --system -e src/api-gateway
-ENTRYPOINT ["uvicorn", "--app-dir", "src/api-gateway/src", "main:app", "--host", "0.0.0.0"]
+FROM base AS api_gateway
+COPY src/api_gateway src/api_gateway/
+RUN uv pip install --system -e src/api_gateway
+ENTRYPOINT ["uvicorn", "--app-dir", "src/api_gateway/src", "main:app", "--host", "0.0.0.0"]
 
-FROM base AS mq-consumer
-COPY src/mq-consumer src/mq-consumer/
-RUN uv pip install --system -e src/mq-consumer
-ENTRYPOINT ["uvicorn", "--app-dir", "src/mq-consumer/src", "main:app", "--host", "0.0.0.0"]
+FROM base AS mq_consumer
+COPY src/mq_consumer src/mq_consumer/
+RUN uv pip install --system -e src/mq_consumer
+ENTRYPOINT ["uvicorn", "--app-dir", "src/mq_consumer/src", "main:app", "--host", "0.0.0.0"]
 
 
 
