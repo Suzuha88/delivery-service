@@ -5,6 +5,7 @@ requires-python = ">=3.14"
 dependencies = [
   "api_gateway",
   "httpx2>=2.7.0",
+  "loguru>=0.7.3",
   "mq_consumer",
   "pytest>=9.1.1",
   "pytest-asyncio>=1.4.0",

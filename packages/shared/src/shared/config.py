@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     API_GATEWAY_PORT: int
     MQ_CONSUMER_PORT: int
 
+    LOG_LEVEL: str = "INFO"
+
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql{self.DB_CLIENT}://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"

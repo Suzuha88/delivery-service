@@ -3,21 +3,19 @@ from typing import AsyncGenerator
 
 import uvicorn
 from fastapi import FastAPI
-from shared import settings
+from loguru import logger
+from shared.config import settings
 from shared.db import initialize_db
+from shared.fastapi_utils import register_exception_handlers, register_request_logging
 from shared.rabbit import initialize_rabbitmq, process_registration_message
-
-if __name__ == "__main__":
-    uvicorn.run("main:app",
-                reload=True, port=settings.MQ_CONSUMER_PORT)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    logger.level(settings.LOG_LEVEL)
     await initialize_db()
 
     connection, channel, queue = await initialize_rabbitmq()
-
     await queue.consume(process_registration_message)
 
     app.state.connection = connection
@@ -27,4 +25,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
     await connection.close()
 
+
 app = FastAPI(lifespan=lifespan)
+register_exception_handlers(app)
+register_request_logging(app)
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", reload=True, port=settings.MQ_CONSUMER_PORT)

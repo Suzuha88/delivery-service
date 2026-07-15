@@ -105,7 +105,7 @@ async def api_app(
 
 @pytest.fixture
 async def api_client(api_app: Any) -> AsyncGenerator[AsyncClient, None]:
-    transport = ASGITransport(app=api_app)
+    transport = ASGITransport(app=api_app, raise_app_exceptions=False)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 

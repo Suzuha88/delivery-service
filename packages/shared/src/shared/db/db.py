@@ -12,7 +12,8 @@ URL = settings.DATABASE_URL
 
 async_engine = create_async_engine(
     URL,
-    echo=True)
+    echo=False,
+)
 
 AsyncSessionMaker = async_sessionmaker(
     bind=async_engine, expire_on_commit=False)

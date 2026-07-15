@@ -16,3 +16,17 @@ class PackageSchema(BaseModel):
         if isinstance(v, str):
             return v.lower()
         return v
+
+
+class PackageResponse(BaseModel):
+    uid: int
+    name: str
+    category: CategoryEnum
+    weight: float
+    dollar_price: float
+    ruble_price: float
+
+
+class CategoryResponse(BaseModel):
+    uid: int
+    category_name: CategoryEnum

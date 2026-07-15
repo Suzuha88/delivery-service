@@ -66,7 +66,7 @@ async def test_get_package_not_found(api_client: AsyncClient) -> None:
     api_client.cookies.set("session_id", "session-a")
     response = await api_client.get("/packages/99999")
     assert response.status_code == 404
-    assert response.json()["message"] == "No packages with this id"
+    assert response.json()["error"] == "No packages with this id"
 
 
 async def test_get_package_wrong_session_returns_404(
@@ -144,6 +144,41 @@ async def test_register_publish_failure_returns_500(
 
     assert response.status_code == 500
     assert "Couldn't send package for registration" in response.json()["error"]
+
+
+async def test_validation_error_returns_consistent_shape(
+    api_client: AsyncClient,
+) -> None:
+    api_client.cookies.set("session_id", "session-reg")
+    response = await api_client.post(
+        "/register",
+        json={
+            "name": "Bad",
+            "weight": -1,
+            "category_name": "electronics",
+            "dollar_price": 10.0,
+        },
+    )
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"] == "Validation failed"
+    assert "details" in body
+
+
+async def test_unhandled_exception_returns_generic_500(
+    api_client: AsyncClient,
+    monkeypatch,
+) -> None:
+    api_client.cookies.set("session_id", "session-a")
+
+    def boom(*_args, **_kwargs):
+        raise RuntimeError("unexpected failure")
+
+    monkeypatch.setattr("main.get_session_id", boom)
+
+    response = await api_client.get("/packages")
+    assert response.status_code == 500
+    assert response.json() == {"error": "Internal server error"}
 
 
 async def test_new_visitor_gets_session_cookie(api_client: AsyncClient) -> None:

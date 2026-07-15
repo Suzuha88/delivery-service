@@ -16,8 +16,3 @@ FROM base AS mq_consumer
 COPY src/mq_consumer src/mq_consumer/
 RUN uv pip install --system -e src/mq_consumer
 ENTRYPOINT ["uvicorn", "--app-dir", "src/mq_consumer/src", "main:app", "--host", "0.0.0.0"]
-
-
-
-
-
