@@ -13,7 +13,7 @@ from shared.rabbit import initialize_rabbitmq, process_registration_message
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.level(settings.LOG_LEVEL)
-    await initialize_db()
+    # await initialize_db()
 
     connection, channel, queue = await initialize_rabbitmq()
     await queue.consume(process_registration_message)

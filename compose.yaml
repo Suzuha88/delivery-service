@@ -1,5 +1,6 @@
 services:
   api_gateway:
+    restart: always
     build:
       context: .
       dockerfile: docker/dockerfile
@@ -13,6 +14,7 @@ services:
       - .env
 
   mq_consumer:
+    restart: always
     build:
       context: .
       dockerfile: docker/dockerfile
@@ -30,7 +32,7 @@ services:
   sql_db:
     image: postgres@sha256:4aabea78cf39b90e834caf3af7d602a18565f6fe2508705c8d01aa63245c2e20
     container_name: postgres_db
-    restart: unless-stopped
+    restart: always
     ports:
       - "${DB_PORT}:5432"
     environment:
@@ -43,6 +45,7 @@ services:
   rabbit_mq:
     image: rabbitmq@sha256:0753b75ce99094c385483d89449d532a0544fb85e4942a478b21cc497ab66d33
     container_name: rabbit_mq
+    restart: always
     ports:
       - "${RABBIT_PORT}:15672" # Do not change order of ports, it is important
       - "${AMQP_PORT}:5672"
@@ -53,7 +56,7 @@ services:
   redis:
     image: redis@sha256:2838d5524559494f6f1cd66e97e76b200d64a633a8614200620755ed395daf32
     container_name: redis_cache
-    restart: unless-stopped
+    restart: always
     ports:
       - "${REDIS_PORT}:6379"
 

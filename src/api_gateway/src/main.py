@@ -23,7 +23,7 @@ from utils import get_session_id
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.level(settings.LOG_LEVEL)
-    await initialize_db()
+    await initialize_db()  # run migrations, popilate categories table
     connection, channel, queue = await initialize_rabbitmq()
 
     app.state.connection = connection
@@ -44,6 +44,10 @@ async def add_session_id(
     request: Request,
     call_next: RequestResponseEndpoint,
 ) -> Response:
+    """
+    Check if request has session id, if not
+    Forward it with state variable of same name, get response and set session id
+    """
     session_id = request.cookies.get("session_id")
 
     if not session_id:
@@ -65,6 +69,7 @@ async def register(
     package: PackageSchema,
     request: Request,
 ) -> dict[str, str]:
+    """Send package info for registration into message queue"""
     session_id = get_session_id(request)
     channel = app.state.channel
     dict_body = package.model_dump(mode="json")
@@ -91,6 +96,10 @@ async def get_package(
     db_session: Annotated[AsyncSession, Depends(get_session)],
     package_id: int,
 ) -> dict[str, Any]:
+    """
+    Get package of same user by id
+    Even if id exists will not return package of other user
+    """
     session_id = get_session_id(request)
     query = select(
         Package.uid,
@@ -118,6 +127,7 @@ async def get_all_packages(
     request: Request,
     db_session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[dict[str, Any]]:
+    """Get all packages"""
     session_id = get_session_id(request)
     query = select(
         Package.uid,
@@ -136,6 +146,7 @@ async def get_all_packages(
 async def get_all_categories(
     db_session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[dict[str, Any]]:
+    """Get all categories"""
     categories = (await db_session.execute(select(Category))).scalars().all()
     return [
         {"uid": category.uid, "category_name": category.category_name}

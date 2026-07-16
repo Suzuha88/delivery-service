@@ -1,7 +1,7 @@
 # Бэкенд системы доставки товаров.
 
 ### Запуск: 
-`cat .env_example > .env && docker-compose up --build`
+`cat .env_example > .env && docker-compose build && docker-compose up`
 
 ### Настройка: 
 переменные окружения описаны в .env file
@@ -19,6 +19,7 @@
 
 1. установить uv: https://docs.astral.sh/uv/getting-started/installation/
 2. `uv sync`
+3. `source .venv/bin/activate`
 
 ### Тесты:
 `pytest tests -v`
