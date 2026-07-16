@@ -6,11 +6,11 @@ from typing import Annotated, Any, AsyncGenerator
 import uvicorn
 from aio_pika import Message as AQMessage
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
-from loguru import logger
 from shared.config import settings
 from shared.db import get_session, initialize_db
 from shared.db.models import Category, Package
 from shared.fastapi_utils import register_exception_handlers, register_request_logging
+from shared.logging import logger
 from shared.rabbit import initialize_rabbitmq
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +22,6 @@ from utils import get_session_id
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    logger.level(settings.LOG_LEVEL)
     await initialize_db()  # run migrations, popilate categories table
     connection, channel, queue = await initialize_rabbitmq()
 

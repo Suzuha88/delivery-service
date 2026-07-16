@@ -1,8 +1,8 @@
 from aiohttp import ClientSession
-from loguru import logger
 from redis.asyncio import Redis
 
 from ..config import settings
+from ..logging import logger
 
 CACHE_KEY = "exchange_rates"
 CACHE_TTL = 86400  # 24 hours

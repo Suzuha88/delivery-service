@@ -3,18 +3,13 @@ from typing import AsyncGenerator
 
 import uvicorn
 from fastapi import FastAPI
-from loguru import logger
 from shared.config import settings
-from shared.db import initialize_db
 from shared.fastapi_utils import register_exception_handlers, register_request_logging
 from shared.rabbit import initialize_rabbitmq, process_registration_message
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    logger.level(settings.LOG_LEVEL)
-    # await initialize_db()
-
     connection, channel, queue = await initialize_rabbitmq()
     await queue.consume(process_registration_message)
 

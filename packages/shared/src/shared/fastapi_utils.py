@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from loguru import logger
 from starlette.middleware.base import RequestResponseEndpoint
+
+from .logging import logger
 
 
 def register_exception_handlers(app: FastAPI) -> None:

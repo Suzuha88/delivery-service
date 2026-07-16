@@ -7,13 +7,13 @@ from aio_pika.abc import (
     AbstractIncomingMessage,
     AbstractQueue,
 )
-from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ..config import settings
 from ..db.db import AsyncSessionMaker
 from ..db.models import Category, Package
+from ..logging import logger
 from ..rd_cache import get_rates
 
 
