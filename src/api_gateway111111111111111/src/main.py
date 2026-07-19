@@ -10,14 +10,13 @@ from shared.config import settings
 from shared.db import get_session, initialize_db
 from shared.db.models import Category, Package
 from shared.fastapi_utils import register_exception_handlers, register_request_logging
-from shared.logging import logger
 from shared.rabbit import initialize_rabbitmq
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import RequestResponseEndpoint
 
-from schemas.schemas import CategoryResponse, PackageResponse, PackageSchema
-from utils import get_session_id
+from .schemas.schemas import CategoryResponse, PackageResponse, PackageSchema
+from .utils import get_session_id
 
 
 @asynccontextmanager
