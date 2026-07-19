@@ -15,10 +15,10 @@ class Settings(BaseSettings):
     RABBIT_PASSWORD: str
     RABBIT_HOST: str
     RABBIT_PORT: int
-    AMQP_PORT: int
+    AMQP_PORT: str
 
     REDIS_HOST: str
-    REDIS_PORT: int
+    REDIS_PORT: str
 
     API_GATEWAY_PORT: int
     MQ_CONSUMER_PORT: int
@@ -26,15 +26,15 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     @property
-    def DATABASE_URL(self) -> str:
+    def database_url(self) -> str:
         return f"postgresql{self.DB_CLIENT}://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     @property
-    def DATABASE_URL_WITHOUT_CLIENT(self) -> str:
-        return self.DATABASE_URL.replace(self.DB_CLIENT, "")
+    def database_url_without_client(self) -> str:
+        return self.database_url.replace(self.DB_CLIENT, "")
 
     @property
-    def RABBIT_URL(self) -> str:
+    def rabbit_url(self) -> str:
         return f"amqp://{self.RABBIT_USER}:{self.RABBIT_PASSWORD}@{self.RABBIT_HOST}:{self.AMQP_PORT}/"
 
 

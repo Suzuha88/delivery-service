@@ -1,7 +1,8 @@
 from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
-from shared.db.enums import CategoryEnum
+
+from src.domain.enums import CategoryEnum
 
 
 class PackageSchema(BaseModel):
@@ -24,7 +25,7 @@ class PackageResponse(BaseModel):
     category: CategoryEnum
     weight: float
     dollar_price: float
-    ruble_price: float
+    delivery_price: float
 
 
 class CategoryResponse(BaseModel):

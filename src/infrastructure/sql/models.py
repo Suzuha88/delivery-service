@@ -1,8 +1,8 @@
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, select
-from sqlalchemy.ext.asyncio import AsyncSession
+
+from sqlalchemy import CheckConstraint, Enum, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from .enums import CategoryEnum
+from src.domain.enums import CategoryEnum
 
 
 class Base(DeclarativeBase):
@@ -15,23 +15,11 @@ class Category(Base):
     uid: Mapped[int] = mapped_column(primary_key=True)
     category_name: Mapped[CategoryEnum] = mapped_column(Enum(CategoryEnum))
 
-    @classmethod
-    async def ensure_populated(cls, session: AsyncSession) -> None:
-        """Ensure all categories exist in the table."""
-        res = await session.execute(select(cls))
-        existing = {row.category_name for row in res.scalars().all()}
-
-        for ctg in CategoryEnum:
-            if ctg not in existing:
-                session.add(cls(category_name=ctg))
-
-        await session.commit()
-
 
 class Package(Base):
     __tablename__ = "packages"
 
-    uid: Mapped[int] = mapped_column(primary_key=True)
+    uid: Mapped[str] = mapped_column(primary_key=True, autoincrement=False)
     session_id: Mapped[str] = mapped_column(index=True)
     name: Mapped[str]
     weight: Mapped[float] = mapped_column(
@@ -42,4 +30,4 @@ class Package(Base):
     dollar_price: Mapped[float] = mapped_column(
         CheckConstraint("dollar_price >= 0", name="ck_price_not_negative")
     )
-    ruble_price: Mapped[float | None]
+    delivery_price: Mapped[float | None]

@@ -1,0 +1,113 @@
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import async_sessionmaker
+
+from src.domain.enums import CategoryEnum
+from src.infrastructure.sql.models import Category, Package
+from src.infrastructure.utils import calculate_delivery_price
+from src.logging import logger
+
+
+async def register_package(
+        session_factory: async_sessionmaker,
+        message_body: dict,
+) -> None:
+    # Функция агостична к валюте в которой оплачивается доставка,
+    # выходим на мировой рынок
+    """
+        Register package in sql db
+        Arguments:
+            message_body: json from rabbitmq, converted to python dict
+            exchange_rate:  dollar price of valute in which delivery price is calculated
+    """
+    category_name = message_body.pop("category_name")
+    package_name = message_body["name"]
+    dollar_price = message_body["dollar_price"]
+    weight = message_body["weight"]
+    exchange_rate = message_body.pop("exchange_rate")
+    delivery_price = calculate_delivery_price(
+        dollar_price, exchange_rate, weight)
+
+    async with session_factory() as db_session:
+
+        category = (
+            await db_session.execute(
+                select(Category).where(
+                    Category.category_name == category_name
+                )
+            )
+        ).scalars().one_or_none()
+
+        if category is None:
+            raise ValueError(f"Unknown category: {category_name}")
+
+        package_obj = Package(
+            **message_body,
+            delivery_price=delivery_price,
+            category_id=category.uid,
+        )
+        db_session.add(package_obj)
+        await db_session.commit()
+        # транзакция коммитится тк у таски своя собственная сессия
+        # со своим коннектом и другие транзакции она не трогает
+        logger.info(
+            f"Registered package name={package_name} \
+                    category={category_name} delivery_price={delivery_price}"
+        )
+
+
+async def get_package(session_factory: async_sessionmaker,
+                      uid: str,
+                      session_id: str) -> dict[str, Any]:
+    with session_factory() as db_session:
+
+        query = select(
+            Package.uid,
+            Package.name,
+            Package.weight,
+            Package.dollar_price,
+            Package.delivery_price,
+            Category.category_name.label("category"),
+        ).join(Package.category).where(
+            Package.session_id == session_id,
+            Package.uid == uid,
+        )
+
+        res = (await db_session.execute(query)).mappings().one_or_none()
+        # TODO: custom exception
+        # if res is None:
+        #     raise HTTPException(
+        #         status_code=status.HTTP_404_NOT_FOUND,
+        #         detail="No packages with this id",
+        #     )
+        return dict(res)
+
+
+async def get_all_packages(session_factory: async_sessionmaker,
+                           session_id: str) -> list[dict[str, Any]]:
+    with session_factory() as db_session:
+
+        query = select(
+            Package.uid,
+            Package.name,
+            Package.weight,
+            Package.dollar_price,
+            Package.delivery_price,
+            Category.category_name.label("category"),
+        ).join(Package.category).where(Package.session_id == session_id)
+
+        rows = (await db_session.execute(query)).mappings().all()
+        return [dict(row) for row in rows]
+
+
+async def get_all_categories(
+        session_factory: async_sessionmaker
+) -> list[dict[str, CategoryEnum]]:
+    with session_factory() as db_session:
+
+        categories = (await db_session.execute(select(Category))).scalars().all()
+        return [
+            {"uid": category.uid, "category_name": category.category_name}
+            for category in categories
+        ]

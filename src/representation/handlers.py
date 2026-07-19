@@ -1,15 +1,15 @@
-from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.exceptions import RequestValidationError
+from fastapi import FastAPI, Request
+from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import RequestResponseEndpoint
 
-from .logging import logger
+from src.logging import logger
 
 
 def register_exception_handlers(app: FastAPI) -> None:
+
     @app.exception_handler(HTTPException)
     async def http_exception_handler(
-        request: Request,
+        # request: Request,
         exc: HTTPException,
     ) -> JSONResponse:
         return JSONResponse(
@@ -41,17 +41,5 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
         return JSONResponse(
             status_code=500,
-            content={"error": "Internal server error"},
+            content={"error": "Internal server error", "details": exc},
         )
-
-
-def register_request_logging(app: FastAPI) -> None:
-    @app.middleware("http")
-    async def log_requests(
-        request: Request,
-        call_next: RequestResponseEndpoint,
-    ) -> Response:
-        response = await call_next(request)
-        logger.info(
-            f"{request.method} {request.url.path} -> {response.status_code=}")
-        return response
