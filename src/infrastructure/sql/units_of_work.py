@@ -4,6 +4,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from src.domain.enums import CategoryEnum
+from src.domain.exceptions import (
+    PackageIsPendingError,
+    PackageNotFoundError,
+)
+from src.infrastructure.redis.reg_status import get_cached_status
 from src.infrastructure.sql.models import Category, Package
 from src.infrastructure.utils import calculate_delivery_price
 from src.logging import logger
@@ -78,7 +83,13 @@ async def get_package(
         )
 
         res = (await db_session.execute(query)).mappings().one_or_none()
-        return dict(res)
+        if res:
+            return dict(res)
+
+        elif await get_cached_status(uid, session_id):
+            raise PackageIsPendingError()
+        else:
+            raise PackageNotFoundError()
 
 
 async def get_all_packages(
@@ -114,6 +125,8 @@ async def get_all_packages(
                 query = query.where(Package.delivery_price == None)
 
         rows = (await db_session.execute(query)).mappings().all()
+        if len(rows) == 0:
+            raise PackageNotFoundError(multiple=True)
         return [dict(row) for row in rows]
 
 
