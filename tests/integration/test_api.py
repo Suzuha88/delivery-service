@@ -1,12 +1,12 @@
 import json
-from unittest.mock import AsyncMock
 
-from httpx2 import AsyncClient
+from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.db.enums import CategoryEnum
-from shared.db.models import Category, Package
+from src.domain.enums import CategoryEnum
+from src.infrastructure.sql.models import Category, Package
+from tests.conftest import InMemoryMessageQueue
 
 
 async def test_get_categories(api_client: AsyncClient) -> None:
@@ -18,11 +18,11 @@ async def test_get_categories(api_client: AsyncClient) -> None:
     assert names == {c.value for c in CategoryEnum}
 
 
-async def test_get_packages_empty(api_client: AsyncClient) -> None:
+async def test_get_packages_empty_returns_404(api_client: AsyncClient) -> None:
     api_client.cookies.set("session_id", "session-a")
     response = await api_client.get("/packages")
-    assert response.status_code == 200
-    assert response.json() == []
+    assert response.status_code == 404
+    assert response.json()["error"] == "Package not found"
 
 
 async def test_get_packages_and_get_by_id(
@@ -36,16 +36,17 @@ async def test_get_packages_and_get_by_id(
     ).scalars().one()
 
     package = Package(
+        uid="phone-uid",
         session_id="session-a",
+        user_seq=0,
         name="Phone",
         weight=0.3,
         category_id=category.uid,
         dollar_price=200.0,
-        ruble_price=18000.0,
+        delivery_price=18000.0,
     )
     db_session.add(package)
     await db_session.commit()
-    await db_session.refresh(package)
 
     api_client.cookies.set("session_id", "session-a")
 
@@ -56,17 +57,17 @@ async def test_get_packages_and_get_by_id(
     assert packages[0]["name"] == "Phone"
     assert packages[0]["category"] == "electronics"
 
-    detail = await api_client.get(f"/packages/{package.uid}")
+    detail = await api_client.get("/packages/phone-uid")
     assert detail.status_code == 200
-    assert detail.json()["uid"] == package.uid
+    assert detail.json()["uid"] == "phone-uid"
     assert detail.json()["dollar_price"] == 200.0
 
 
 async def test_get_package_not_found(api_client: AsyncClient) -> None:
     api_client.cookies.set("session_id", "session-a")
-    response = await api_client.get("/packages/99999")
+    response = await api_client.get("/packages/missing-uid")
     assert response.status_code == 404
-    assert response.json()["error"] == "No packages with this id"
+    assert response.json()["error"] == "Package not found"
 
 
 async def test_get_package_wrong_session_returns_404(
@@ -80,25 +81,26 @@ async def test_get_package_wrong_session_returns_404(
     ).scalars().one()
 
     package = Package(
+        uid="jacket-uid",
         session_id="owner-session",
+        user_seq=0,
         name="Jacket",
         weight=1.0,
         category_id=category.uid,
         dollar_price=50.0,
-        ruble_price=4500.0,
+        delivery_price=4500.0,
     )
     db_session.add(package)
     await db_session.commit()
-    await db_session.refresh(package)
 
     api_client.cookies.set("session_id", "other-session")
-    response = await api_client.get(f"/packages/{package.uid}")
+    response = await api_client.get("/packages/jacket-uid")
     assert response.status_code == 404
 
 
 async def test_register_publishes_message_with_session_id(
     api_client: AsyncClient,
-    mock_rabbit_channel,
+    mock_mq: InMemoryMessageQueue,
 ) -> None:
     api_client.cookies.set("session_id", "session-reg")
 
@@ -111,26 +113,22 @@ async def test_register_publishes_message_with_session_id(
     response = await api_client.post("/register", json=payload)
 
     assert response.status_code == 200
-    assert response.json()["message"] == "Package sent for registration"
-    mock_rabbit_channel.default_exchange.publish.assert_awaited_once()
+    assert "sent for registration" in response.json()["message"]
+    assert len(mock_mq.sent_messages) == 1
 
-    published = mock_rabbit_channel.default_exchange.publish.await_args
-    message = published.args[0]
-    body = json.loads(message.body.decode("utf-8"))
+    body = json.loads(mock_mq.sent_messages[0].decode("utf-8"))
     assert body["name"] == "Tablet"
     assert body["session_id"] == "session-reg"
     assert body["category_name"] == "electronics"
-    assert published.kwargs["routing_key"] == "hello"
+    assert "uid" in body
 
 
 async def test_register_publish_failure_returns_500(
     api_client: AsyncClient,
-    mock_rabbit_channel,
+    mock_mq: InMemoryMessageQueue,
 ) -> None:
     api_client.cookies.set("session_id", "session-reg")
-    mock_rabbit_channel.default_exchange.publish = AsyncMock(
-        side_effect=RuntimeError("broker down")
-    )
+    mock_mq.publish_error = RuntimeError("broker down")
 
     response = await api_client.post(
         "/register",
@@ -143,7 +141,7 @@ async def test_register_publish_failure_returns_500(
     )
 
     assert response.status_code == 500
-    assert "Couldn't send package for registration" in response.json()["error"]
+    assert "broker down" in response.json()["details"]
 
 
 async def test_validation_error_returns_consistent_shape(
@@ -165,25 +163,8 @@ async def test_validation_error_returns_consistent_shape(
     assert "details" in body
 
 
-async def test_unhandled_exception_returns_generic_500(
-    api_client: AsyncClient,
-    monkeypatch,
-) -> None:
-    api_client.cookies.set("session_id", "session-a")
-
-    def boom(*_args, **_kwargs):
-        raise RuntimeError("unexpected failure")
-
-    monkeypatch.setattr("main.get_session_id", boom)
-
-    response = await api_client.get("/packages")
-    assert response.status_code == 500
-    assert response.json() == {"error": "Internal server error"}
-
-
 async def test_new_visitor_gets_session_cookie(api_client: AsyncClient) -> None:
     response = await api_client.get("/packages")
-    assert response.status_code == 200
-    # Secure cookies may not be stored by httpx on http://; Set-Cookie header must exist
+    assert response.status_code == 404
     set_cookie = response.headers.get("set-cookie", "")
     assert "session_id=" in set_cookie

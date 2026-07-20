@@ -24,6 +24,7 @@
 3. `source .venv/bin/activate`
 
 ### Тесты:
+`uv sync --group dev`
 `pytest tests -v`
 
 ### Стэк:

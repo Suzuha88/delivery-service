@@ -1,18 +1,41 @@
 import json
+import os
 from collections.abc import AsyncGenerator, Generator
 from contextlib import asynccontextmanager
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import testing.postgresql
-from httpx2 import ASGITransport, AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
+
+from src.domain.enums import CategoryEnum
+from src.domain.message_queues import AbstractMessageQueue
+from src.infrastructure.repositories import PostgresRepository
+from src.infrastructure.sql.models import Base, Category
+from src.representation.routers import get_repository
+
+
+class InMemoryMessageQueue(AbstractMessageQueue):
+    def __init__(self) -> None:
+        self.sent_messages: list[bytes] = []
+        self.publish_error: Exception | None = None
+
+    async def send_registration_message(self, byte_data: bytes) -> None:
+        if self.publish_error is not None:
+            raise self.publish_error
+        self.sent_messages.append(byte_data)
+
+    async def process_registration_messages(
+        self, repo_callback, exchange_rate_awaitable
+    ) -> None:
+        pass
 
 
 @pytest.fixture(scope="session")
@@ -25,15 +48,11 @@ def postgres() -> Generator[testing.postgresql.Postgresql, None, None]:
 @pytest.fixture(scope="session")
 def database_url(postgres: testing.postgresql.Postgresql) -> str:
     dsn = postgres.dsn()
-    return (
-        f"postgresql+asyncpg://{dsn['user']}@{dsn['host']}:{dsn['port']}/{dsn['database']}"
-    )
+    return f"postgresql+asyncpg://{dsn['user']}@{dsn['host']}:{dsn['port']}/{dsn['database']}"
 
 
 @pytest.fixture
 async def engine(database_url: str) -> AsyncGenerator[AsyncEngine, None]:
-    from shared.db.models import Base
-
     eng = create_async_engine(database_url, echo=False)
     async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -47,9 +66,7 @@ async def engine(database_url: str) -> AsyncGenerator[AsyncEngine, None]:
 
 
 @pytest.fixture
-async def session_maker(
-    engine: AsyncEngine,
-) -> async_sessionmaker[AsyncSession]:
+async def session_maker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
@@ -57,55 +74,58 @@ async def session_maker(
 async def db_session(
     session_maker: async_sessionmaker[AsyncSession],
 ) -> AsyncGenerator[AsyncSession, None]:
-    from shared.db.models import Category
-
     async with session_maker() as session:
-        await Category.ensure_populated(session)
+        for uid, category_name in enumerate(CategoryEnum, start=1):
+            session.add(Category(uid=uid, category_name=category_name))
+        await session.commit()
         yield session
         await session.rollback()
 
 
 @pytest.fixture
-def mock_rabbit_channel() -> MagicMock:
-    channel = MagicMock()
-    channel.default_exchange.publish = AsyncMock()
-    return channel
+def mock_mq() -> InMemoryMessageQueue:
+    return InMemoryMessageQueue()
+
+
+@pytest.fixture(autouse=True)
+def mock_redis_registration_status() -> Generator[None, None, None]:
+    with patch(
+        "src.infrastructure.sql.units_of_work.get_cached_status",
+        AsyncMock(return_value=None),
+    ):
+        yield
 
 
 @pytest.fixture
-def mock_rabbit_queue() -> MagicMock:
-    queue = MagicMock()
-    queue.name = "hello"
-    return queue
-
-
-@pytest.fixture
-async def api_app(
+def producer_app(
     db_session: AsyncSession,
     session_maker: async_sessionmaker[AsyncSession],
-    mock_rabbit_channel: MagicMock,
-    mock_rabbit_queue: MagicMock,
+    mock_mq: InMemoryMessageQueue,
 ) -> Any:
-    import main
-    from shared.db import get_session
+    from fastapi import FastAPI
 
-    async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
-        async with session_maker() as session:
-            yield session
+    from src.representation.handlers import register_exception_handlers
+    from src.representation.middleware import (
+        register_middleware,
+        register_request_logging,
+    )
+    from src.representation.routers import get_router, post_router
 
-    main.app.dependency_overrides[get_session] = override_get_session
-    main.app.state.connection = AsyncMock()
-    main.app.state.channel = mock_rabbit_channel
-    main.app.state.queue = mock_rabbit_queue
-
-    yield main.app
-
-    main.app.dependency_overrides.clear()
+    app = FastAPI()
+    app.state.mq = mock_mq
+    register_middleware(app)
+    register_exception_handlers(app)
+    register_request_logging(app)
+    app.include_router(post_router)
+    app.include_router(get_router)
+    app.dependency_overrides[get_repository] = lambda: PostgresRepository(session_maker)
+    yield app
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
-async def api_client(api_app: Any) -> AsyncGenerator[AsyncClient, None]:
-    transport = ASGITransport(app=api_app, raise_app_exceptions=False)
+async def api_client(producer_app: Any) -> AsyncGenerator[AsyncClient, None]:
+    transport = ASGITransport(app=producer_app, raise_app_exceptions=False)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
@@ -125,3 +145,24 @@ def mock_incoming_message() -> MagicMock:
 
     message.process = process
     return message
+
+
+@pytest.fixture
+def rabbit_url() -> str:
+    url = os.environ.get(
+        "TEST_RABBIT_URL",
+        "amqp://guest:guest@localhost:5672/",
+    )
+    return url
+
+
+@pytest.fixture
+async def rabbit_available(rabbit_url: str) -> str:
+    from aio_pika import connect
+
+    try:
+        connection = await connect(rabbit_url, timeout=2)
+    except Exception as exc:
+        pytest.skip(f"RabbitMQ not available at {rabbit_url}: {exc}")
+    await connection.close()
+    return rabbit_url

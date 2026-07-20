@@ -1,8 +1,8 @@
 from collections.abc import Awaitable, Callable
 from json import loads as json_loads
 
+from aio_pika import DeliveryMode, connect
 from aio_pika import Message as AQMessage
-from aio_pika import connect
 from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractQueue
 
 from src.core.logging import logger
@@ -38,7 +38,7 @@ class RabbitMessageQueue(AbstractMessageQueue):
 
         try:
             await self._channel.default_exchange.publish(
-                AQMessage(byte_data),
+                AQMessage(byte_data, delivery_mode=DeliveryMode.PERSISTENT),
                 routing_key=self._queue.name,
             )
         except Exception as exc:
