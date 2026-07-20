@@ -48,7 +48,7 @@ async def register(
 async def get_package(
     request: Request,
     package_id: str,
-    repository: Annotated[AbstractRepository, Depends(get_repository)]
+    repository: Annotated[AbstractRepository, Depends(get_repository)],
 ) -> dict[str, Any]:
     """
     Get package of same user by id
@@ -61,17 +61,19 @@ async def get_package(
 
 @get_router.get("/packages", response_model=list[PackageResponse])
 async def get_all_packages(
-        request: Request,
-        repository: Annotated[AbstractRepository, Depends(get_repository)]
+    request: Request, repository: Annotated[AbstractRepository, Depends(get_repository)]
 ) -> list[dict[str, Any]]:
     """Get all packages"""
     session_id = get_session_id(request)
-    return await repository.get_all_packages(session_id)
+    try:
+        return await repository.get_all_packages(session_id)
+    except Exception as e:
+        raise e
 
 
 @get_router.get("/categories", response_model=list[CategoryResponse])
 async def get_all_categories(
-        repository: Annotated[AbstractRepository, Depends(get_repository)]
+    repository: Annotated[AbstractRepository, Depends(get_repository)],
 ) -> list[dict[str, Any]]:
     """Get all categories"""
     return await repository.get_all_categories()

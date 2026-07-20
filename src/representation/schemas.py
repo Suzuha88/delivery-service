@@ -20,7 +20,7 @@ class PackageSchema(BaseModel):
 
 
 class PackageResponse(BaseModel):
-    uid: int
+    uid: str
     name: str
     category: CategoryEnum
     weight: float

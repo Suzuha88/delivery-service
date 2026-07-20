@@ -20,13 +20,12 @@ def get_repo() -> PostgresRepository:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     rabbit = await RabbitMessageQueue.create(settings.rabbit_url)
-    # ty:ignore[unresolved-attribute]
     await rabbit.process_registration_messages(get_repo, fetch_rub_exchange_rate)
     app.state.mq = rabbit
 
     yield
 
-    await app.state.mq.connection.close()  # ty:ignore[unresolved-attribute]
+    await app.state.mq.connection.close()
 
 
 def setup_consumer() -> FastAPI:
