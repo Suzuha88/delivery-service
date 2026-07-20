@@ -2,7 +2,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
 
-from src.logging import logger
+from src.core.logging import logger
+from src.domain.exceptions import PackageIsPendingError, PackageNotFoundError
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -29,6 +30,17 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=422,
             content={"error": "Validation failed", "details": exc.errors()},
+        )
+
+    @app.exception_handler(PackageIsPendingError)
+    @app.exception_handler(PackageNotFoundError)
+    async def package_exception_handler(
+        request: Request, exc: PackageIsPendingError | PackageNotFoundError
+    ) -> JSONResponse:
+        logger.exception("Couldn't query a package")
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Package not found", "details": exc.description},
         )
 
     @app.exception_handler(Exception)

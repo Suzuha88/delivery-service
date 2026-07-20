@@ -1,8 +1,8 @@
 from redis.asyncio import Redis
 
+from src.core.logging import logger
 from src.infrastructure.http.cbr import fetch_rub_exchange_rate
-from src.infrastructure.redis import redis_client
-from src.logging import logger
+from src.infrastructure.redis import RedisManager
 
 CACHE_KEY = "exchange_rates"
 CACHE_TTL = 86400  # 24 hours
@@ -26,7 +26,8 @@ async def cache_rates(redis_client: Redis, data: float) -> None:
 
 
 async def get_exchange_rate() -> float:
-    global redis_client
+    redis_manager = RedisManager()
+    redis_client = await redis_manager.get_client()
     cached_rates = await get_cached_rates(redis_client)
     if cached_rates:
         return cached_rates

@@ -14,5 +14,7 @@ class PackageIsPendingError(MyError):
 class PackageNotFoundError(MyError):
     def __init__(self, multiple: bool = False) -> None:
         if multiple:
-            self.description = "Packages not found}"
-        self.description = "Package not found"
+            self.description = "Couldn't find a single package with these constraints}"
+        self.description = (
+            "Couldn't find a package with this id, please check if id is correct"
+        )

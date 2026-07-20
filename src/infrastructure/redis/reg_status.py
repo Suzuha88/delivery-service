@@ -1,6 +1,5 @@
-
-from src.infrastructure.redis import redis_client
-from src.logging import logger
+from src.core.logging import logger
+from src.infrastructure.redis import RedisManager
 
 CACHE_TTL = 300  # 5 minutes
 
@@ -10,12 +9,14 @@ def get_cache_key(uid: str, session_id: str) -> str:
 
 
 async def cache_status(uid: str, session_id: str) -> None:
-    global redis_client
+    redis_manager = RedisManager()
+    redis_client = await redis_manager.get_client()
     await redis_client.setex(get_cache_key(uid, session_id), CACHE_TTL, "Pending")
 
 
 async def get_cached_status(uid: str, session_id: str) -> str | None:
-    global redis_client
+    redis_manager = RedisManager()
+    redis_client = await redis_manager.get_client()
     cached_status: bytes | str | None = await redis_client.get(
         get_cache_key(uid, session_id)
     )

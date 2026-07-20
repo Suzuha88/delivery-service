@@ -4,8 +4,9 @@ from typing import AsyncGenerator
 import uvicorn
 from fastapi import FastAPI
 
-from src.config import settings
+from src.core.config import producer_settings, rabbit_settings
 from src.infrastructure.message_queues import RabbitMessageQueue
+from src.infrastructure.redis import RedisManager
 from src.infrastructure.repositories import PostgresRepository
 from src.infrastructure.sql.db import async_session_maker
 from src.representation.handlers import register_exception_handlers
@@ -16,13 +17,16 @@ from src.representation.routers import get_repository, get_router, post_router
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
-    rabbit = await RabbitMessageQueue.create(settings.rabbit_url)
+    rabbit = await RabbitMessageQueue.create(rabbit_settings.rabbit_url)
     # Здесь меняется реализация очереди сообщений
     app.state.mq = rabbit
 
     yield
 
-    await app.state.mq.connection.close()  # ty:ignore[unresolved-attribute]
+    rm = RedisManager()
+    await rm.close()
+
+    await app.state.mq.connection.close()
 
 
 def setup_producer() -> FastAPI:
@@ -47,4 +51,4 @@ def setup_producer() -> FastAPI:
 app = setup_producer()
 
 if __name__ == "__main__":
-    uvicorn.run("producer:app", reload=True, port=settings.API_GATEWAY_PORT)
+    uvicorn.run("producer:app", reload=True, port=producer_settings.PRODUCER_PORT)

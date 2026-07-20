@@ -3,7 +3,7 @@ from secrets import token_hex
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import RequestResponseEndpoint
 
-from src.logging import logger
+from src.core.logging import logger
 
 
 def register_middleware(app: FastAPI) -> None:
@@ -40,6 +40,5 @@ def register_request_logging(app: FastAPI) -> None:
         call_next: RequestResponseEndpoint,
     ) -> Response:
         response = await call_next(request)
-        logger.info(
-            f"{request.method} {request.url.path} -> {response.status_code=}")
+        logger.info(f"{request.method} {request.url.path} -> {response.status_code=}")
         return response

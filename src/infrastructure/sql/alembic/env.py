@@ -5,7 +5,7 @@ from pathlib import Path
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from src.config import settings
+from src.core.config import db_settings
 from src.infrastructure.sql.models import Base
 
 src_path = Path(__file__).parent.parent.parent
@@ -14,7 +14,7 @@ sys.path.insert(0, str(src_path))
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url_without_client)
+config.set_main_option("sqlalchemy.url", db_settings.database_url_without_client)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -71,9 +71,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

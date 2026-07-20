@@ -3,6 +3,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from src.core.logging import logger
 from src.domain.enums import CategoryEnum
 from src.domain.exceptions import (
     PackageIsPendingError,
@@ -11,7 +12,6 @@ from src.domain.exceptions import (
 from src.infrastructure.redis.reg_status import get_cached_status
 from src.infrastructure.sql.models import Category, Package
 from src.infrastructure.utils import calculate_delivery_price
-from src.logging import logger
 
 
 async def register_package(

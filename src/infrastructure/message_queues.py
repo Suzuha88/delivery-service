@@ -5,10 +5,10 @@ from aio_pika import Message as AQMessage
 from aio_pika import connect
 from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractQueue
 
+from src.core.logging import logger
 from src.domain.message_queues import AbstractMessageQueue
 from src.domain.repositories import AbstractRepository
 from src.infrastructure.redis.reg_status import cache_status
-from src.logging import logger
 
 
 class RabbitMessageQueue(AbstractMessageQueue):
@@ -31,7 +31,7 @@ class RabbitMessageQueue(AbstractMessageQueue):
         return instance
 
     async def send_registration_message(self, byte_data: bytes) -> None:
-        data = await json_loads(byte_data.decode())
+        data = json_loads(byte_data.decode())
         uid, session_id = data["uid"], data["session_id"]
         # send to redis as 'pending'
         await cache_status(uid, session_id)

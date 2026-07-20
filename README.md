@@ -1,17 +1,19 @@
 # Бэкенд системы доставки товаров.
 
 ### Запуск: 
-`cat .env_example > .env && docker-compose build && docker-compose up`
+`cat .env_example.docker > .env.docker && docker-compose build && docker-compose up`
+после этого необходимо выполнить миграции через алембик с помощью
+`alembic upgrade head`
+если алембик не установлен глобально см. пункт Установка
 
 ### Настройка: 
-переменные окружения описаны в .env file
-при запуске fastAPI приложений через докер 
-хосты контейнеров должны быть идентичны названиям сервисов
-в docker-compose.yaml, при запуске без контейнеров, например
-
-`docker-compose up -d sql_db redis rabbit_mq && python src/api_gateway/src/main.py`
-
-хосты нужно переименовать в localhost
+переменные окружения описаны в .env и .env.docker файлах
+первый для запуска на локальной машине:
+`docker compose -d postgres redis rabbit`
+`python manage.py run_consumer`
+`python manage.py run_producer`
+второй для запуска в докере:
+`docker compose build && docker compose up`
 
 уровень логирования указывается в переменной LOG_LEVEL
 
