@@ -6,7 +6,9 @@ from fastapi import (
     APIRouter,
     Depends,
     Request,
+    status,
 )
+from fastapi.responses import JSONResponse
 
 from src.domain.enums import CategoryEnum
 from src.domain.message_queues import AbstractMessageQueue
@@ -26,7 +28,7 @@ def get_repository() -> AbstractRepository:
 async def register(
     package: PackageSchema,
     request: Request,
-) -> dict[str, str]:
+) -> JSONResponse:
     """Send package info for registration into message queue"""
 
     dict_body = package.model_dump(mode="json")
@@ -42,7 +44,10 @@ async def register(
 
     await mq.send_registration_message(byte_body)
 
-    return {"message": f"Package with {uid=} sent for registration"}
+    return JSONResponse(
+        content={"message": f"Package with {uid=} sent for registration"},
+        status_code=status.HTTP_202_ACCEPTED,
+    )
 
 
 @get_router.get("/packages/{package_id}", response_model=PackageResponse)

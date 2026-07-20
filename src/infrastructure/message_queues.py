@@ -1,3 +1,4 @@
+from asyncio import sleep
 from collections.abc import Awaitable, Callable
 from json import loads as json_loads
 
@@ -49,6 +50,8 @@ class RabbitMessageQueue(AbstractMessageQueue):
         self,
         repo_callback: Callable[[], AbstractRepository],
         exchange_rate_awaitable: Callable[[], Awaitable[float]],
+        max_retries: int = 3,
+        multiplier: int = 2,
     ) -> None:
         """
         Stat processing registration messages
@@ -58,17 +61,29 @@ class RabbitMessageQueue(AbstractMessageQueue):
 
         async with self._queue.iterator() as queue_iter:
             async for message in queue_iter:
-                async with message.process():
-                    try:
-                        message_body = json_loads(message.body)
-                        logger.info(
-                            f"Processing package registration: name={message_body.get('name')}"
-                        )
-                        repo = repo_callback()
-                        exchange_rate = await exchange_rate_awaitable()
-                        message_body["exchange_rate"] = exchange_rate
-                        await repo.register_package(message_body)
+                async with message.process(requeue=True):
+                    for attempt in range(1, max_retries + 1):
+                        try:
+                            message_body = json_loads(message.body)
+                            logger.info(
+                                f"Processing package registration: name={message_body.get('name')}"
+                            )
+                            repo = repo_callback()
+                            exchange_rate = await exchange_rate_awaitable()
+                            message_body["exchange_rate"] = exchange_rate
+                            await repo.register_package(message_body)
+                            break
 
-                    except Exception:
-                        logger.exception("Failed to process registration message")
-                        raise
+                        except Exception:
+                            if attempt == max_retries:
+                                logger.exception(
+                                    "Failed to process registration message"
+                                )
+                                raise
+
+                            t = multiplier**attempt
+                            logger.exception(
+                                f"Failed to process registration message, scheduling for retry in {t} seconds"
+                            )
+
+                            await sleep(t)

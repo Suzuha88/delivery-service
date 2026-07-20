@@ -140,7 +140,7 @@ def mock_incoming_message() -> MagicMock:
     message = MagicMock()
 
     @asynccontextmanager
-    async def process():
+    async def process(**_kwargs: object) -> AsyncGenerator[None, None]:
         yield
 
     message.process = process

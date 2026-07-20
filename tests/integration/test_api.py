@@ -30,10 +30,16 @@ async def test_get_packages_and_get_by_id(
     db_session: AsyncSession,
 ) -> None:
     category = (
-        await db_session.execute(
-            select(Category).where(Category.category_name == CategoryEnum.ELECTRONICS)
+        (
+            await db_session.execute(
+                select(Category).where(
+                    Category.category_name == CategoryEnum.ELECTRONICS
+                )
+            )
         )
-    ).scalars().one()
+        .scalars()
+        .one()
+    )
 
     package = Package(
         uid="phone-uid",
@@ -75,10 +81,14 @@ async def test_get_package_wrong_session_returns_404(
     db_session: AsyncSession,
 ) -> None:
     category = (
-        await db_session.execute(
-            select(Category).where(Category.category_name == CategoryEnum.CLOTHES)
+        (
+            await db_session.execute(
+                select(Category).where(Category.category_name == CategoryEnum.CLOTHES)
+            )
         )
-    ).scalars().one()
+        .scalars()
+        .one()
+    )
 
     package = Package(
         uid="jacket-uid",
@@ -112,7 +122,7 @@ async def test_register_publishes_message_with_session_id(
     }
     response = await api_client.post("/register", json=payload)
 
-    assert response.status_code == 200
+    assert response.status_code == 202
     assert "sent for registration" in response.json()["message"]
     assert len(mock_mq.sent_messages) == 1
 
