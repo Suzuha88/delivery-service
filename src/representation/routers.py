@@ -8,6 +8,7 @@ from fastapi import (
     Request,
 )
 
+from src.domain.enums import CategoryEnum
 from src.domain.message_queues import AbstractMessageQueue
 from src.domain.repositories import AbstractRepository
 from src.representation.schemas import CategoryResponse, PackageResponse, PackageSchema
@@ -61,12 +62,19 @@ async def get_package(
 
 @get_router.get("/packages", response_model=list[PackageResponse])
 async def get_all_packages(
-    request: Request, repository: Annotated[AbstractRepository, Depends(get_repository)]
+    request: Request,
+    repository: Annotated[AbstractRepository, Depends(get_repository)],
+    start: int = 0,
+    limit: int | None = None,
+    category: CategoryEnum | None = None,
+    delivery_price_has_been_calculated: bool | None = None,
 ) -> list[dict[str, Any]]:
     """Get all packages"""
     session_id = get_session_id(request)
     try:
-        return await repository.get_all_packages(session_id)
+        return await repository.get_all_packages(
+            session_id, start, limit, category, delivery_price_has_been_calculated
+        )
     except Exception as e:
         raise e
 

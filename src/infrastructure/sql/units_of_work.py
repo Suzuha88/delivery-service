@@ -82,7 +82,12 @@ async def get_package(
 
 
 async def get_all_packages(
-    session_factory: async_sessionmaker, session_id: str
+    session_factory: async_sessionmaker,
+    session_id: str,
+    start: int = 0,
+    limit: int | None = None,
+    category: CategoryEnum | None = None,
+    delivery_price_has_been_calculated: bool | None = None,
 ) -> list[dict[str, Any]]:
     async with session_factory() as db_session:
         query = (
@@ -95,8 +100,18 @@ async def get_all_packages(
                 Category.category_name.label("category"),
             )
             .join(Package.category)
-            .where(Package.session_id == session_id)
+            .where(Package.session_id == session_id, Package.user_seq >= start)
         )
+
+        if limit:
+            query = query.limit(limit)
+        if category:
+            query = query.where(Category.category_name == category)
+        if isinstance(delivery_price_has_been_calculated, bool):
+            if delivery_price_has_been_calculated:
+                query = query.where(Package.delivery_price != None)
+            else:
+                query = query.where(Package.delivery_price == None)
 
         rows = (await db_session.execute(query)).mappings().all()
         return [dict(row) for row in rows]
