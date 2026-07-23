@@ -1,17 +1,21 @@
 # Бэкенд системы доставки товаров.
 
 ### Запуск: 
+в докере:
 `cat .env_example > .env && docker-compose build && docker-compose up`
+на локальной машине:
+`cat .env.local_example > .env.local`
+`docker compose up -d postgres redis rabbit`
+`python manage.py run_consumer`
+`python manage.py run_api`
+после этого необходимо выполнить миграции через алембик с помощью
+`alembic upgrade head`
+если алембик не установлен глобально см. пункт Установка
 
 ### Настройка: 
-переменные окружения описаны в .env file
-при запуске fastAPI приложений через докер 
-хосты контейнеров должны быть идентичны названиям сервисов
-в docker-compose.yaml, при запуске без контейнеров, например
-
-`docker-compose up -d sql_db redis rabbit_mq && python src/api_gateway/src/main.py`
-
-хосты нужно переименовать в localhost
+переменные окружения описаны в .env.local и .env файлах
+первый для запуска на локальной машине
+второй для запуска в докере
 
 уровень логирования указывается в переменной LOG_LEVEL
 
@@ -22,10 +26,11 @@
 3. `source .venv/bin/activate`
 
 ### Тесты:
+`uv sync --group dev`
 `pytest tests -v`
 
 ### Стэк:
-FastAPI, SQLAlchemy async + asyncpg, Alembic, aio-pika, Redis, pydantic-settings, uv.
+FastAPI, SQLAlchemy async + asyncpg, Alembic, aio-pika, Redis, pydantic-settings, uv, FastStream.
 
 ### API:
 после запуска можно посмотреть документацию по ссылке:

@@ -1,37 +1,41 @@
 services:
-  api_gateway:
+  api:
     restart: always
     build:
       context: .
-      dockerfile: docker/dockerfile
-      target: api_gateway
+      dockerfile: dockerfile
+      target: api
     ports:
-      - "${API_GATEWAY_PORT}:8000"
+      - "${API_PORT}:8000"
     depends_on:
-      - sql_db
-      - rabbit_mq
+      postgres:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - .env
 
-  mq_consumer:
+  consumer:
     restart: always
     build:
       context: .
-      dockerfile: docker/dockerfile
-      target: mq_consumer
-    ports:
-      - "${MQ_CONSUMER_PORT}:8000"
+      dockerfile: dockerfile
+      target: consumer
     depends_on:
-      - sql_db
-      - rabbit_mq
-      - redis
-      - api_gateway
+      postgres:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - .env
 
-  sql_db:
+  postgres:
     image: postgres@sha256:4aabea78cf39b90e834caf3af7d602a18565f6fe2508705c8d01aa63245c2e20
-    container_name: postgres_db
+    container_name: postgres
     restart: always
     ports:
       - "${DB_PORT}:5432"
@@ -39,12 +43,17 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/18/data
 
-  rabbit_mq:
+  rabbit:
     image: rabbitmq@sha256:0753b75ce99094c385483d89449d532a0544fb85e4942a478b21cc497ab66d33
-    container_name: rabbit_mq
+    container_name: rabbit
     restart: always
     ports:
       - "${RABBIT_PORT}:15672" # Do not change order of ports, it is important
@@ -52,16 +61,24 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
-      
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   redis:
     image: redis@sha256:2838d5524559494f6f1cd66e97e76b200d64a633a8614200620755ed395daf32
-    container_name: redis_cache
+    container_name: redis
     restart: always
     ports:
       - "${REDIS_PORT}:6379"
-
-    
-
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]  
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

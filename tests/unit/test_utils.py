@@ -1,5 +1,7 @@
 from starlette.requests import Request
-from utils.utils import get_session_id
+
+from src.infrastructure.utils.utils import calculate_delivery_price
+from src.representation.utils import get_session_id
 
 
 def _make_request(
@@ -44,3 +46,8 @@ def test_get_session_id_prefers_cookie_over_state() -> None:
         session_id_state="state-id",
     )
     assert get_session_id(request) == "cookie-id"
+
+
+def test_calculate_delivery_price() -> None:
+    # weight * 0.5 + dollar_price * 0.01 * exchange_rate
+    assert calculate_delivery_price(100.0, 90.0, 2.0) == 91.0

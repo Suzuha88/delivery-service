@@ -1,7 +1,8 @@
 import pytest
 from pydantic import ValidationError
-from schemas.schemas import PackageSchema
-from shared.db.enums import CategoryEnum
+
+from src.domain.enums import CategoryEnum
+from src.representation.schemas import PackageSchema
 
 
 def test_package_schema_accepts_valid_payload() -> None:
