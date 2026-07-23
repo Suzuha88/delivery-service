@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from aio_pika import DeliveryMode, Message, connect
 
-from src.infrastructure.message_queues import RabbitMessageQueue
+from src.infrastructure.message_queues import RabbitMessageQueuePublisher
 
 pytestmark = pytest.mark.integration
 
@@ -60,7 +60,7 @@ async def test_send_registration_message_survives_broker_reconnect(
     }
 
     connection, channel, queue = await _connect_queue(rabbit_available, queue_name)
-    mq = RabbitMessageQueue.__new__(RabbitMessageQueue)
+    mq = RabbitMessageQueuePublisher.__new__(RabbitMessageQueuePublisher)
     mq._url = rabbit_available
     mq.connection = connection
     mq._channel = channel

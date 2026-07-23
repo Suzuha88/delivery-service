@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from src.domain.enums import CategoryEnum
+from src.domain.dataclasses import PackageFilters, PackageRegistrationData
 
 
 class AbstractRepository(ABC):
     @abstractmethod
-    async def register_package(self, package_info: dict) -> None:
+    async def register_package(self, package_info: PackageRegistrationData) -> None:
         pass
 
     @abstractmethod
@@ -15,12 +15,7 @@ class AbstractRepository(ABC):
 
     @abstractmethod
     async def get_all_packages(
-        self,
-        user_id: str,
-        start: int = 0,
-        limit: int | None = None,
-        category: CategoryEnum | None = None,
-        delivery_price_has_been_calculated: bool | None = None,
+        self, user_id: str, filters: PackageFilters
     ) -> list[dict[str, Any]]:
         pass
 

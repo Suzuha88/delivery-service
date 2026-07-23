@@ -7,8 +7,8 @@ RUN uv pip install --system .
 
 ENV PYTHONUNBUFFERED=1
 
-FROM base AS producer
-ENTRYPOINT ["python", "manage.py", "run_producer"]
+FROM base AS api
+ENTRYPOINT ["python", "manage.py", "run_api"]
 
 FROM base AS consumer
 ENTRYPOINT ["python", "manage.py", "run_consumer"]

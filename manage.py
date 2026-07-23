@@ -1,33 +1,29 @@
+import asyncio
+
 import uvicorn
 from typer import Typer
 
-from src.core.config import consumer_settings, producer_settings
-from src.core.consumer import setup_consumer
-from src.core.producer import setup_producer
+from src.core.api import setup_api
+from src.core.config import api_settings
+from src.core.consumer import main
 
 manager = Typer()
 
 
-@manager.command("run_producer")
-def run_producer() -> None:
-    setup_producer()
+@manager.command("run_api")
+def run_api() -> None:
+    setup_api()
     uvicorn.run(
-        "src.core.producer:app",
+        "src.core.api:app",
         host="0.0.0.0",
-        port=producer_settings.PRODUCER_PORT,
+        port=api_settings.API_PORT,
         reload=True,
     )
 
 
 @manager.command("run_consumer")
 def run_consumer() -> None:
-    setup_consumer()
-    uvicorn.run(
-        "src.core.consumer:app",
-        host="0.0.0.0",
-        port=consumer_settings.CONSUMER_PORT,
-        reload=True,
-    )
+    asyncio.run(main())
 
 
 if __name__ == "__main__":

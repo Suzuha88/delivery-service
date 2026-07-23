@@ -1,9 +1,8 @@
 import json
 import os
 from collections.abc import AsyncGenerator, Generator
-from contextlib import asynccontextmanager
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import testing.postgresql
@@ -16,13 +15,13 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from src.domain.enums import CategoryEnum
-from src.domain.message_queues import AbstractMessageQueue
+from src.domain.message_queues import AbstractMessageQueuePublisher
 from src.infrastructure.repositories import PostgresRepository
 from src.infrastructure.sql.models import Base, Category
 from src.representation.routers import get_repository
 
 
-class InMemoryMessageQueue(AbstractMessageQueue):
+class InMemoryMessageQueuePublisher(AbstractMessageQueuePublisher):
     def __init__(self) -> None:
         self.sent_messages: list[bytes] = []
         self.publish_error: Exception | None = None
@@ -31,11 +30,6 @@ class InMemoryMessageQueue(AbstractMessageQueue):
         if self.publish_error is not None:
             raise self.publish_error
         self.sent_messages.append(byte_data)
-
-    async def process_registration_messages(
-        self, repo_callback, exchange_rate_awaitable
-    ) -> None:
-        pass
 
 
 @pytest.fixture(scope="session")
@@ -83,8 +77,8 @@ async def db_session(
 
 
 @pytest.fixture
-def mock_mq() -> InMemoryMessageQueue:
-    return InMemoryMessageQueue()
+def mock_mq() -> InMemoryMessageQueuePublisher:
+    return InMemoryMessageQueuePublisher()
 
 
 @pytest.fixture(autouse=True)
@@ -97,10 +91,10 @@ def mock_redis_registration_status() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-def producer_app(
+def api_app(
     db_session: AsyncSession,
     session_maker: async_sessionmaker[AsyncSession],
-    mock_mq: InMemoryMessageQueue,
+    mock_mq: InMemoryMessageQueuePublisher,
 ) -> Any:
     from fastapi import FastAPI
 
@@ -124,8 +118,8 @@ def producer_app(
 
 
 @pytest.fixture
-async def api_client(producer_app: Any) -> AsyncGenerator[AsyncClient, None]:
-    transport = ASGITransport(app=producer_app, raise_app_exceptions=False)
+async def api_client(api_app: Any) -> AsyncGenerator[AsyncClient, None]:
+    transport = ASGITransport(app=api_app, raise_app_exceptions=False)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
@@ -136,24 +130,11 @@ def sample_rates_json() -> str:
 
 
 @pytest.fixture
-def mock_incoming_message() -> MagicMock:
-    message = MagicMock()
-
-    @asynccontextmanager
-    async def process(**_kwargs: object) -> AsyncGenerator[None, None]:
-        yield
-
-    message.process = process
-    return message
-
-
-@pytest.fixture
 def rabbit_url() -> str:
-    url = os.environ.get(
+    return os.environ.get(
         "TEST_RABBIT_URL",
         "amqp://guest:guest@localhost:5672/",
     )
-    return url
 
 
 @pytest.fixture

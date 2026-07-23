@@ -49,5 +49,5 @@ def test_get_session_id_prefers_cookie_over_state() -> None:
 
 
 def test_calculate_delivery_price() -> None:
-    # weight * 0.5 + dollar_price * exchange_rate
-    assert calculate_delivery_price(100.0, 90.0, 2.0) == 9001.0
+    # weight * 0.5 + dollar_price * 0.01 * exchange_rate
+    assert calculate_delivery_price(100.0, 90.0, 2.0) == 91.0

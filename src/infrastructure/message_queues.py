@@ -1,21 +1,22 @@
-from asyncio import sleep
-from collections.abc import Awaitable, Callable
 from json import loads as json_loads
 
 from aio_pika import DeliveryMode, connect
 from aio_pika import Message as AQMessage
-from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractQueue
+from aio_pika.abc import (
+    AbstractChannel,
+    AbstractConnection,
+    AbstractQueue,
+)
 
 from src.core.logging import logger
-from src.domain.message_queues import AbstractMessageQueue
-from src.domain.repositories import AbstractRepository
+from src.domain.message_queues import AbstractMessageQueuePublisher
 from src.infrastructure.redis.reg_status import cache_status
 
 
-class RabbitMessageQueue(AbstractMessageQueue):
+class RabbitMessageQueuePublisher(AbstractMessageQueuePublisher):
     def __init__(self, url: str) -> None:
         """
-        don't call like this, await RabbitMessageQueue.create(url) instead
+        don't call like this, await RabbitMessageQueuePublisher.create(url) instead
         """
         self._url: str = url
         self.connection: AbstractConnection
@@ -23,8 +24,8 @@ class RabbitMessageQueue(AbstractMessageQueue):
         self._queue: AbstractQueue
 
     @classmethod
-    async def create(cls, url: str) -> RabbitMessageQueue:
-        instance = RabbitMessageQueue(url)
+    async def create(cls, url: str) -> RabbitMessageQueuePublisher:
+        instance = RabbitMessageQueuePublisher(url)
         instance.connection = await connect(instance._url)
         instance._channel = await instance.connection.channel()
         instance._queue = await instance._channel.declare_queue("hello", durable=True)
@@ -45,45 +46,3 @@ class RabbitMessageQueue(AbstractMessageQueue):
         except Exception as exc:
             logger.exception(f"Couldn't send package for registration: {exc}")
             raise exc
-
-    async def process_registration_messages(
-        self,
-        repo_callback: Callable[[], AbstractRepository],
-        exchange_rate_awaitable: Callable[[], Awaitable[float]],
-        max_retries: int = 3,
-        multiplier: int = 2,
-    ) -> None:
-        """
-        Stat processing registration messages
-        loads data in dict and sends it with exchange rate to repo
-        for insertion
-        """
-
-        async with self._queue.iterator() as queue_iter:
-            async for message in queue_iter:
-                async with message.process(requeue=True):
-                    for attempt in range(1, max_retries + 1):
-                        try:
-                            message_body = json_loads(message.body)
-                            logger.info(
-                                f"Processing package registration: name={message_body.get('name')}"
-                            )
-                            repo = repo_callback()
-                            exchange_rate = await exchange_rate_awaitable()
-                            message_body["exchange_rate"] = exchange_rate
-                            await repo.register_package(message_body)
-                            break
-
-                        except Exception:
-                            if attempt == max_retries:
-                                logger.exception(
-                                    "Failed to process registration message"
-                                )
-                                raise
-
-                            t = multiplier**attempt
-                            logger.exception(
-                                f"Failed to process registration message, scheduling for retry in {t} seconds"
-                            )
-
-                            await sleep(t)

@@ -1,9 +1,11 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class PostgresSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="allow")
+class _BaseSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env.local", extra="allow")
 
+
+class PostgresSettings(_BaseSettings):
     DB_CLIENT: str = "+asyncpg"
     DB_PASSWORD: str
     DB_NAME: str
@@ -20,9 +22,7 @@ class PostgresSettings(BaseSettings):
         return self.database_url.replace(self.DB_CLIENT, "")
 
 
-class RabbitSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="allow")
-
+class RabbitSettings(_BaseSettings):
     RABBIT_USER: str
     RABBIT_PASSWORD: str
     RABBIT_HOST: str
@@ -34,34 +34,21 @@ class RabbitSettings(BaseSettings):
         return f"amqp://{self.RABBIT_USER}:{self.RABBIT_PASSWORD}@{self.RABBIT_HOST}:{self.AMQP_PORT}/"
 
 
-class RedisSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="allow")
-
+class RedisSettings(_BaseSettings):
     REDIS_HOST: str
     REDIS_PORT: int
 
 
-class ProducerSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="allow")
-
-    PRODUCER_PORT: int
+class ApiSettings(_BaseSettings):
+    API_PORT: int
 
 
-class ConsumerSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="allow")
-
-    CONSUMER_PORT: int
-
-
-class LoggingSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="allow")
-
+class LoggingSettings(_BaseSettings):
     LOG_LEVEL: str = "INFO"
 
 
 db_settings = PostgresSettings()
 rabbit_settings = RabbitSettings()
 redis_settings = RedisSettings()
-producer_settings = ProducerSettings()
-consumer_settings = ConsumerSettings()
+api_settings = ApiSettings()
 logging_settings = LoggingSettings()

@@ -1,12 +1,12 @@
 services:
-  producer:
+  api:
     restart: always
     build:
       context: .
-      dockerfile: docker/dockerfile
-      target: producer
+      dockerfile: dockerfile
+      target: api
     ports:
-      - "${PRODUCER_PORT}:8000"
+      - "${API_PORT}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -15,16 +15,14 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - .env.docker
+      - .env
 
   consumer:
     restart: always
     build:
       context: .
-      dockerfile: docker/dockerfile
+      dockerfile: dockerfile
       target: consumer
-    ports:
-      - "${CONSUMER_PORT}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -33,7 +31,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - .env.docker
+      - .env
 
   postgres:
     image: postgres@sha256:4aabea78cf39b90e834caf3af7d602a18565f6fe2508705c8d01aa63245c2e20

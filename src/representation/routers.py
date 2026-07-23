@@ -5,15 +5,21 @@ from typing import Annotated, Any
 from fastapi import (
     APIRouter,
     Depends,
+    Query,
     Request,
     status,
 )
 from fastapi.responses import JSONResponse
 
-from src.domain.enums import CategoryEnum
-from src.domain.message_queues import AbstractMessageQueue
+from src.domain.dataclasses import PackageFilters
+from src.domain.message_queues import AbstractMessageQueuePublisher
 from src.domain.repositories import AbstractRepository
-from src.representation.schemas import CategoryResponse, PackageResponse, PackageSchema
+from src.representation.schemas import (
+    CategoryResponse,
+    PackageResponse,
+    PackageSchema,
+    PackagesFilter,
+)
 from src.representation.utils import get_session_id
 
 get_router = APIRouter()
@@ -32,7 +38,7 @@ async def register(
     """Send package info for registration into message queue"""
 
     dict_body = package.model_dump(mode="json")
-    mq: AbstractMessageQueue = request.app.state.mq
+    mq: AbstractMessageQueuePublisher = request.app.state.mq
 
     uid = str(uuid.uuid4())
     session_id = get_session_id(request)
@@ -69,19 +75,12 @@ async def get_package(
 async def get_all_packages(
     request: Request,
     repository: Annotated[AbstractRepository, Depends(get_repository)],
-    start: int = 0,
-    limit: int | None = None,
-    category: CategoryEnum | None = None,
-    delivery_price_has_been_calculated: bool | None = None,
+    options: Annotated[PackagesFilter, Query()],
 ) -> list[dict[str, Any]]:
     """Get all packages"""
     session_id = get_session_id(request)
-    try:
-        return await repository.get_all_packages(
-            session_id, start, limit, category, delivery_price_has_been_calculated
-        )
-    except Exception as e:
-        raise e
+    filters = PackageFilters(**options.model_dump())
+    return await repository.get_all_packages(session_id, filters)
 
 
 @get_router.get("/categories", response_model=list[CategoryResponse])

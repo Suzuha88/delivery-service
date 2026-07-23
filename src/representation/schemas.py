@@ -31,3 +31,10 @@ class PackageResponse(BaseModel):
 class CategoryResponse(BaseModel):
     uid: int
     category_name: CategoryEnum
+
+
+class PackagesFilter(BaseModel):
+    start: Annotated[int, Field(ge=0)] = 0
+    limit: Annotated[int | None, Field(ge=0)] = None
+    category: CategoryEnum | None = None
+    delivery_price_has_been_calculated: bool | None = None

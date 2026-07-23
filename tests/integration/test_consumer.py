@@ -1,18 +1,17 @@
-import json
 from unittest.mock import AsyncMock, patch
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src.core.consumer import base_handler
 from src.domain.enums import CategoryEnum
-from src.infrastructure.message_queues import RabbitMessageQueue
+from src.infrastructure.repositories import PostgresRepository
 from src.infrastructure.sql.models import Package
 
 
-async def test_process_registration_message_inserts_package(
+async def test_base_handler_inserts_package(
     db_session: AsyncSession,
     session_maker: async_sessionmaker[AsyncSession],
-    mock_incoming_message,
 ) -> None:
     body = {
         "session_id": "consumer-session",
@@ -22,34 +21,16 @@ async def test_process_registration_message_inserts_package(
         "category_name": CategoryEnum.ELECTRONICS.value,
         "dollar_price": 10.0,
     }
-    mock_incoming_message.body = json.dumps(body).encode("utf-8")
-
-    mq = RabbitMessageQueue.__new__(RabbitMessageQueue)
-
-    async def one_message_iter():
-        yield mock_incoming_message
-
-    from contextlib import asynccontextmanager
-
-    @asynccontextmanager
-    async def iterator():
-        yield one_message_iter()
-
-    mq._queue = AsyncMock()
-    mq._queue.iterator = iterator
-
-    from src.infrastructure.repositories import PostgresRepository
-
     repo = PostgresRepository(session_maker)
 
-    with patch(
-        "src.infrastructure.sql.units_of_work.get_cached_status",
-        AsyncMock(return_value=None),
+    with (
+        patch("src.core.consumer.get_repo", return_value=repo),
+        patch(
+            "src.core.consumer.get_exchange_rate",
+            AsyncMock(return_value=90.0),
+        ),
     ):
-        await mq.process_registration_messages(
-            repo_callback=lambda: repo,
-            exchange_rate_awaitable=AsyncMock(return_value=90.0),
-        )
+        await base_handler(body)
 
     result = await db_session.execute(
         select(Package).where(Package.session_id == "consumer-session")
@@ -58,14 +39,13 @@ async def test_process_registration_message_inserts_package(
     assert package.name == "Headphones"
     assert package.weight == 0.25
     assert package.dollar_price == 10.0
-    assert package.delivery_price == 0.25 * 0.5 + 10.0 * 90.0
+    assert package.delivery_price == 0.25 * 0.5 + 10.0 * 0.01 * 90.0
     assert package.category_id is not None
 
 
-async def test_process_registration_message_uses_category(
+async def test_base_handler_uses_category(
     db_session: AsyncSession,
     session_maker: async_sessionmaker[AsyncSession],
-    mock_incoming_message,
 ) -> None:
     body = {
         "session_id": "clothes-session",
@@ -75,34 +55,16 @@ async def test_process_registration_message_uses_category(
         "category_name": CategoryEnum.CLOTHES.value,
         "dollar_price": 5.0,
     }
-    mock_incoming_message.body = json.dumps(body).encode("utf-8")
-
-    mq = RabbitMessageQueue.__new__(RabbitMessageQueue)
-
-    async def one_message_iter():
-        yield mock_incoming_message
-
-    from contextlib import asynccontextmanager
-
-    @asynccontextmanager
-    async def iterator():
-        yield one_message_iter()
-
-    mq._queue = AsyncMock()
-    mq._queue.iterator = iterator
-
-    from src.infrastructure.repositories import PostgresRepository
-
     repo = PostgresRepository(session_maker)
 
-    with patch(
-        "src.infrastructure.sql.units_of_work.get_cached_status",
-        AsyncMock(return_value=None),
+    with (
+        patch("src.core.consumer.get_repo", return_value=repo),
+        patch(
+            "src.core.consumer.get_exchange_rate",
+            AsyncMock(return_value=90.0),
+        ),
     ):
-        await mq.process_registration_messages(
-            repo_callback=lambda: repo,
-            exchange_rate_awaitable=AsyncMock(return_value=90.0),
-        )
+        await base_handler(body)
 
     package = (
         await db_session.execute(

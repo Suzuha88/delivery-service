@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.enums import CategoryEnum
 from src.infrastructure.sql.models import Category, Package
-from tests.conftest import InMemoryMessageQueue
+from tests.conftest import InMemoryMessageQueuePublisher
 
 
 async def test_get_categories(api_client: AsyncClient) -> None:
@@ -69,6 +69,71 @@ async def test_get_packages_and_get_by_id(
     assert detail.json()["dollar_price"] == 200.0
 
 
+async def test_get_packages_with_filters(
+    api_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    electronics = (
+        (
+            await db_session.execute(
+                select(Category).where(
+                    Category.category_name == CategoryEnum.ELECTRONICS
+                )
+            )
+        )
+        .scalars()
+        .one()
+    )
+    clothes = (
+        (
+            await db_session.execute(
+                select(Category).where(Category.category_name == CategoryEnum.CLOTHES)
+            )
+        )
+        .scalars()
+        .one()
+    )
+
+    db_session.add_all(
+        [
+            Package(
+                uid="phone-uid",
+                session_id="session-a",
+                user_seq=0,
+                name="Phone",
+                weight=0.3,
+                category_id=electronics.uid,
+                dollar_price=200.0,
+                delivery_price=18.0,
+            ),
+            Package(
+                uid="jacket-uid",
+                session_id="session-a",
+                user_seq=1,
+                name="Jacket",
+                weight=1.0,
+                category_id=clothes.uid,
+                dollar_price=50.0,
+                delivery_price=None,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    api_client.cookies.set("session_id", "session-a")
+    response = await api_client.get(
+        "/packages",
+        params={
+            "category": "electronics",
+            "delivery_price_has_been_calculated": True,
+        },
+    )
+    assert response.status_code == 200
+    packages = response.json()
+    assert len(packages) == 1
+    assert packages[0]["uid"] == "phone-uid"
+
+
 async def test_get_package_not_found(api_client: AsyncClient) -> None:
     api_client.cookies.set("session_id", "session-a")
     response = await api_client.get("/packages/missing-uid")
@@ -110,7 +175,7 @@ async def test_get_package_wrong_session_returns_404(
 
 async def test_register_publishes_message_with_session_id(
     api_client: AsyncClient,
-    mock_mq: InMemoryMessageQueue,
+    mock_mq: InMemoryMessageQueuePublisher,
 ) -> None:
     api_client.cookies.set("session_id", "session-reg")
 
@@ -135,7 +200,7 @@ async def test_register_publishes_message_with_session_id(
 
 async def test_register_publish_failure_returns_500(
     api_client: AsyncClient,
-    mock_mq: InMemoryMessageQueue,
+    mock_mq: InMemoryMessageQueuePublisher,
 ) -> None:
     api_client.cookies.set("session_id", "session-reg")
     mock_mq.publish_error = RuntimeError("broker down")
@@ -151,7 +216,7 @@ async def test_register_publish_failure_returns_500(
     )
 
     assert response.status_code == 500
-    assert "broker down" in response.json()["details"]
+    assert response.json() == {"error": "Internal server error"}
 
 
 async def test_validation_error_returns_consistent_shape(
